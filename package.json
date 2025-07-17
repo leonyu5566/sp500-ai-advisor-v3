@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@firebase/vertexai": "^1.2.4",
+    "firebase": "^11.10.0"
+  }
+}

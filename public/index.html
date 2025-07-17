@@ -121,6 +121,10 @@
         .notification.error { background-color: #ef4444; } /* red-500 */
         .notification.info { background-color: #3b82f6; } /* blue-500 */
     </style>
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <!-- Vertex AI for Firebase Web SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-vertexai-web-compat.js"></script>
 </head>
 <body class="bg-gray-100">
 
@@ -308,6 +312,23 @@
     
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <script>
+    // ===== Firebase & Vertex AI 初始化 =====
+    // 請將下方 firebaseConfig 換成你自己的專案資訊
+    const firebaseConfig = {
+      apiKey: "AIzaSyAVKsMZVPAzbGZoRditI2U5HO9yYxoohLs",
+      authDomain: "sp500-ai-advisor-v3.firebaseapp.com",
+      projectId: "sp500-ai-advisor-v3",
+      storageBucket: "sp500-ai-advisor-v3.firebasestorage.app",
+      messagingSenderId: "619947451710",
+      appId: "1:619947451710:web:71417435d028165ca6786f"
+    };
+    // 初始化 Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    // 初始化 Vertex AI
+    const vertexAI = firebase.vertexai.getVertexAI(app);
+    // 取得 Gemini 模型
+    const model = firebase.vertexai.getGenerativeModel(vertexAI, { model: 'gemini-pro' });
+
     document.addEventListener('DOMContentLoaded', () => {
         // --- Global Data and Variables ---
         let historicalData = [ { date: '2024-02', y_t: 5096.27, t_1: 4958.61, t_2: 4845.65, dollar_index: 104.14, us_10y_yield: 4.25, us_2y_yield: 4.64, unemployment: 3.9, cpi: 3.2, pmi: 47.8, vix: 13.73, nfp: 275, ffr: 5.33, gold: 2325.0 }, { date: '2024-03', y_t: 5254.35, t_1: 5096.27, t_2: 4958.61, dollar_index: 104.52, us_10y_yield: 4.2, us_2y_yield: 4.62, unemployment: 3.8, cpi: 3.5, pmi: 50.3, vix: 13.01, nfp: 303, ffr: 5.33, gold: 2257.8 }, { date: '2024-04', y_t: 5035.69, t_1: 5254.35, t_2: 5096.27, dollar_index: 105.73, us_10y_yield: 4.68, us_2y_yield: 5.04, unemployment: 3.9, cpi: 3.4, pmi: 49.2, vix: 15.33, nfp: 175, ffr: 5.33, gold: 2307.2 }, { date: '2024-05', y_t: 5277.51, t_1: 5035.69, t_2: 5254.35, dollar_index: 104.66, us_10y_yield: 4.51, us_2y_yield: 4.93, unemployment: 4.0, cpi: 3.3, pmi: 48.7, vix: 14.47, nfp: 272, ffr: 5.33, gold: 2347.4 }, { date: '2024-06', y_t: 5460.48, t_1: 5277.51, t_2: 5035.69, dollar_index: 105.91, us_10y_yield: 4.39, us_2y_yield: 4.87, unemployment: 4.0, cpi: 3.3, pmi: 51.1, vix: 13.2, nfp: 272, ffr: 5.33, gold: 2325.0 }, { date: '2024-07', y_t: 5439.68, t_1: 5460.48, t_2: 5277.51, dollar_index: 105.82, us_10y_yield: 4.34, us_2y_yield: 4.85, unemployment: 4.0, cpi: 3.0, pmi: 51.5, vix: 12.98, nfp: 200, ffr: 5.33, gold: 2330.1 }, { date: '2024-08', y_t: 5450.51, t_1: 5439.68, t_2: 5460.48, dollar_index: 105.65, us_10y_yield: 4.25, us_2y_yield: 4.75, unemployment: 3.9, cpi: 3.1, pmi: 51.2, vix: 12.5, nfp: 180, ffr: 5.33, gold: 2345.6 }, { date: '2024-09', y_t: 5329.93, t_1: 5450.51, t_2: 5439.68, dollar_index: 106.21, us_10y_yield: 4.41, us_2y_yield: 4.89, unemployment: 4.1, cpi: 3.2, pmi: 49.8, vix: 14.8, nfp: 165, ffr: 5.33, gold: 2301.2 }, { date: '2024-10', y_t: 5048.42, t_1: 5329.93, t_2: 5450.51, dollar_index: 107.1, us_10y_yield: 4.65, us_2y_yield: 5.01, unemployment: 4.2, cpi: 3.3, pmi: 49.1, vix: 18.2, nfp: 150, ffr: 5.33, gold: 2280.5 }, { date: '2024-11', y_t: 5137.94, t_1: 5048.42, t_2: 5329.93, dollar_index: 105.5, us_10y_yield: 4.35, us_2y_yield: 4.8, unemployment: 4.1, cpi: 3.1, pmi: 50.2, vix: 15.5, nfp: 190, ffr: 5.33, gold: 2315.8 }, { date: '2024-12', y_t: 5051.57, t_1: 5137.94, t_2: 5048.42, dollar_index: 104.9, us_10y_yield: 4.22, us_2y_yield: 4.7, unemployment: 4.0, cpi: 3.0, pmi: 50.6, vix: 14.1, nfp: 210, ffr: 5.33, gold: 2350.0 }, { date: '2025-01', y_t: 5123.69, t_1: 5051.57, t_2: 5137.94, dollar_index: 105.2, us_10y_yield: 4.25, us_2y_yield: 4.73, unemployment: 4.0, cpi: 3.3, pmi: 48.7, vix: 13.2, nfp: 272, ffr: 5.33, gold: 2325.0 } ];
@@ -364,19 +385,14 @@
 
         async function callGeminiAPI(prompt) {
             try {
-                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (!response.ok) throw new Error(`API Error: ${response.status}`);
-                const result = await response.json();
-                if (result.candidates && result.candidates[0].content.parts[0].text) {
-                    return result.candidates[0].content.parts[0].text;
-                }
-                throw new Error('Invalid API response structure');
+                // 直接呼叫 Vertex AI for Firebase
+                const result = await model.generateContent(prompt);
+                const response = await result.response;
+                const text = response.text();
+                return text;
             } catch (error) {
-                console.error("Error calling Gemini API:", error);
-                return "抱歉，連接分析服務時發生錯誤。";
+                console.error("呼叫 Gemini AI 時發生錯誤:", error);
+                return "抱歉，無法獲取 AI 的回應，請稍後再試。錯誤：" + error.message;
             }
         }
         
@@ -944,10 +960,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
