@@ -399,18 +399,28 @@
         }
 
         async function callGeminiAPI(prompt) {
-            if (!model) {
-                return "抱歉，AI 問答功能尚未初始化完成，請稍後再試。";
-            }
             try {
-                // 直接呼叫 Vertex AI for Firebase
-                const result = await model.generateContent(prompt);
-                const response = await result.response;
-                const text = response.text();
-                return text;
+                const response = await fetch('/api/vertexaiProxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`後端服務錯誤: ${response.status} - ${errorText}`);
+                }
+                const result = await response.json();
+                // 根據 Vertex AI Gemini-pro 回傳格式解析
+                if (result && result.predictions && result.predictions[0]) {
+                    return result.predictions[0].content || JSON.stringify(result.predictions[0]);
+                }
+                if (result.error) {
+                    throw new Error(`Vertex AI Error: ${result.error.message}`);
+                }
+                throw new Error('從 Vertex AI Proxy 收到的 API 回應結構無效');
             } catch (error) {
-                console.error("呼叫 Gemini AI 時發生錯誤:", error);
-                return "抱歉，無法獲取 AI 的回應，請稍後再試。錯誤：" + error.message;
+                console.error("呼叫 Vertex AI Proxy 時發生錯誤:", error);
+                return `抱歉，連接分析服務時發生錯誤。詳情: ${error.message}`;
             }
         }
         

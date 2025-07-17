@@ -1,5 +1,6 @@
 const functions = require("firebase-functions");
 const fetch = require("node-fetch");
+const { GoogleAuth } = require('google-auth-library');
 
 // 建立一個可被 HTTPS 請求觸發的函式，作為我們的 API 代理
 exports.apiProxy = functions.https.onRequest(async (request, response) => {
@@ -47,5 +48,53 @@ exports.apiProxy = functions.https.onRequest(async (request, response) => {
     } catch (error) {
         console.error("Error calling Google Gemini API:", error);
         response.status(500).send(`Error calling Google Gemini API: ${error.message}`);
+    }
+});
+
+// Vertex AI Gemini-pro Proxy
+exports.vertexaiProxy = functions.https.onRequest(async (request, response) => {
+    response.set("Access-Control-Allow-Origin", "*");
+    if (request.method !== "POST") {
+        response.status(405).send("Method Not Allowed");
+        return;
+    }
+    const projectId = functions.config().vertexai.project_id;
+    if (!projectId) {
+        response.status(500).send("VERTEXAI_PROJECT_ID is not configured.");
+        return;
+    }
+    const userPrompt = request.body?.prompt;
+    if (!userPrompt) {
+        response.status(400).send("Please provide a prompt.");
+        return;
+    }
+    // 產生 Bearer Token
+    const auth = new GoogleAuth({
+        scopes: 'https://www.googleapis.com/auth/cloud-platform'
+    });
+    const client = await auth.getClient();
+    const token = await client.getAccessToken();
+    const apiUrl = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-pro:predict`;
+    const payload = {
+        instances: [{ prompt: userPrompt }]
+    };
+    try {
+        const vertexResponse = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token.token || token}`
+            },
+            body: JSON.stringify(payload)
+        });
+        if (!vertexResponse.ok) {
+            const errorText = await vertexResponse.text();
+            throw new Error(`Vertex AI API responded with ${vertexResponse.status}: ${errorText}`);
+        }
+        const result = await vertexResponse.json();
+        response.status(200).send(result);
+    } catch (error) {
+        console.error("Error calling Vertex AI API:", error);
+        response.status(500).send(`Error calling Vertex AI API: ${error.message}`);
     }
 });
