@@ -324,10 +324,25 @@
     };
     // 初始化 Firebase
     const app = firebase.initializeApp(firebaseConfig);
-    // 初始化 Vertex AI
-    const vertexAI = firebase.vertexai.getVertexAI(app);
-    // 取得 Gemini 模型
-    const model = firebase.vertexai.getGenerativeModel(vertexAI, { model: 'gemini-pro' });
+    // --- Vertex AI 防呆初始化 ---
+    let vertexAI = null;
+    let model = null;
+    function tryInitVertexAI() {
+      if (firebase.vertexai && typeof firebase.vertexai.getVertexAI === 'function') {
+        vertexAI = firebase.vertexai.getVertexAI(app);
+        model = firebase.vertexai.getGenerativeModel(vertexAI, { model: 'gemini-pro' });
+        return true;
+      } else {
+        console.error('firebase.vertexai 未正確載入，AI 問答功能將無法使用。');
+        model = null;
+        return false;
+      }
+    }
+    // 嘗試初始化（最多重試 10 次，每 200ms）
+    (function waitForVertexAI(retry = 0) {
+      if (tryInitVertexAI()) return;
+      if (retry < 10) setTimeout(() => waitForVertexAI(retry + 1), 200);
+    })();
 
     document.addEventListener('DOMContentLoaded', () => {
         // --- Global Data and Variables ---
@@ -384,6 +399,9 @@
         }
 
         async function callGeminiAPI(prompt) {
+            if (!model) {
+                return "抱歉，AI 問答功能尚未初始化完成，請稍後再試。";
+            }
             try {
                 // 直接呼叫 Vertex AI for Firebase
                 const result = await model.generateContent(prompt);
